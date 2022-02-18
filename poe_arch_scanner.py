@@ -1,5 +1,6 @@
 import sys
 import json
+import os
 from pathlib import Path
 
 import tkinter as tk
@@ -14,12 +15,19 @@ from typing import Callable, Any, Tuple, List, Dict
 from PIL import ImageTk, Image, ImageGrab
 
 
+if getattr(sys, 'frozen', False):
+    current_path = sys._MEIPASS
+else:
+    current_path = os.path.dirname(__file__)
+
+
 COLOR_BG = 'grey19'
 COLOR_FG_WHITE = 'snow'
 COLOR_FG_GREEN = 'green3'
 COLOR_FG_ORANGE = 'orange2'
 FONT_BIG = ('Consolas', '14')
 FONT_SMALL = ('Consolas', '9')
+PICTURES_FOLDER = os.path.join(current_path, 'pictures')
 
 
 class ArchnemesisItemsMap:
@@ -109,7 +117,8 @@ class ArchnemesisItemsMap:
             self._images[item]['display-small-image'] = ImageTk.PhotoImage(image=image)
 
     def _load_image(self, item: str, scale: float):
-        image = Image.open(f'pictures/{item}.png')
+        fn = os.path.join(PICTURES_FOLDER, f'{item}.png')
+        image = Image.open(fn)
         # Scale the image according to the input parameter
         return image.resize((int(image.width * scale), int(image.height * scale)))
 
