@@ -1,6 +1,12 @@
 # poe-archnemesis-scanner
 Tool for Path of Exile game to automatically scan Archemesis inventory and display related information
 
+Note: This is a fork from ![4rtzel/poe-archnemesis-scanner](https://github.com/4rtzel/poe-archnemesis-scanner) with some changes to my liking, see "Changes from Original" section for details.
+
+## Changes from Original
+* Removal of recipes which results in displaying inventory items and counts after scanning
+* After scanning, afformentioned inventory items and results are copied to clipboard (used for uploading to Web UI)
+
 ## Features
 
 ### Controls
