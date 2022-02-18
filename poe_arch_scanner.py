@@ -1,11 +1,17 @@
 import sys
-from configparser import ConfigParser
+import json
+
 import tkinter as tk
-from typing import Callable, Any, Tuple, List, Dict
+import win32clipboard
 
 import cv2
 import numpy as np
+
+
+from configparser import ConfigParser
+from typing import Callable, Any, Tuple, List, Dict
 from PIL import ImageTk, Image, ImageGrab
+
 
 COLOR_BG = 'grey19'
 COLOR_FG_WHITE = 'snow'
@@ -13,6 +19,7 @@ COLOR_FG_GREEN = 'green3'
 COLOR_FG_ORANGE = 'orange2'
 FONT_BIG = ('Consolas', '14')
 FONT_SMALL = ('Consolas', '9')
+
 
 class ArchnemesisItemsMap:
     """
@@ -28,8 +35,8 @@ class ArchnemesisItemsMap:
             ('Tukohama-Touched', ['Bonebreaker', 'Executioner', 'Magma Barrier']),
             ('Brine King-Touched', ['Ice Prison', 'Storm Strider', 'Heralding Minions']),
             ('Arakaali-Touched', ['Corpse Detonator', 'Entangler', 'Assassin']),
-            ('Solaris-Touched', ['Invulnerable', 'Magma Barrier', 'Empowered Minions']),
-            ('Lunaris-Touched', ['Invulnerable', 'Frost Strider', 'Empowered Minions']),
+            ('Solaris-Touched', ['Invulnerable', 'Magma Barrier', 'Empower Minions']),
+            ('Lunaris-Touched', ['Invulnerable', 'Frost Strider', 'Empowering Minions']),
             ('Effigy', ['Hexer', 'Malediction', 'Corrupter']),
             ('Empowered Elements', ['Evocationist', 'Steel-Infused', 'Chaosweaver']),
             ('Crystal-Skinned', ['Permafrost', 'Rejuvenating', 'Berserker']),
@@ -55,7 +62,7 @@ class ArchnemesisItemsMap:
             ('Necromancer', ['Bombardier', 'Overcharged']),
             ('Trickster', ['Overcharged', 'Assassin', 'Echoist']),
             ('Assassin', ['Deadeye', 'Vampiric']),
-            ('Empowered Minions', ['Necromancer', 'Executioner', 'Gargantuan']),
+            ('Empowering Minions', ['Necromancer', 'Executioner', 'Gargantuan']),
             ('Heralding Minions', ['Dynamo', 'Arcane Buffer']),
             ('Arcane Buffer', []),
             ('Berserker', []),
@@ -163,18 +170,19 @@ class ImageScanner:
         screen = ImageGrab.grab(bbox=bbox)
         screen = np.array(screen)
         screen = cv2.cvtColor(screen, cv2.COLOR_RGB2BGR)
-
         results = dict()
+        inventory_counts = dict()
 
         for item in self._items_map.items():
             heat_map = cv2.matchTemplate(screen, self._items_map.get_scan_image(item), cv2.TM_CCOEFF_NORMED)
             _, confidence, _, (x, y) = cv2.minMaxLoc(heat_map)
             print(f'Best match for {item}: x={x}, y={y} = {confidence}')
             findings = np.where(heat_map >= self._confidence_threshold)
+            inventory_counts[item] = len(findings[0])
             if len(findings[0]) > 0:
                 results[item] = [(findings[1][i], findings[0][i]) for i in range(len(findings[0]))]
-        print(results)
-        return results
+        print(json.dumps(inventory_counts, indent=4))
+        return results, inventory_counts
 
     @property
     def scanner_window_size(self) -> Tuple[int, int, int, int]:
@@ -247,7 +255,13 @@ class UIOverlay:
     def _scan(self, _) -> None:
         self._scan_label_text.set('Scanning...')
         self._root.update()
-        results = self._image_scanner.scan()
+        results, inventory = self._image_scanner.scan()
+
+        win32clipboard.OpenClipboard()
+        win32clipboard.EmptyClipboard()
+        win32clipboard.SetClipboardText(json.dumps(inventory))
+        win32clipboard.CloseClipboard()
+
         if len(results) > 0:
             available_recipes = list()
             for item, recipe in self._items_map.recipes():
