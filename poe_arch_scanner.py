@@ -1,5 +1,6 @@
 import sys
 import json
+from pathlib import Path
 
 import tkinter as tk
 import win32clipboard
@@ -263,13 +264,7 @@ class UIOverlay:
         win32clipboard.CloseClipboard()
 
         if len(results) > 0:
-            available_recipes = list()
-            for item, recipe in self._items_map.recipes():
-                screen_items = [results.get(x) for x in recipe]
-                if all(screen_items):
-                    available_recipes.append((item, [x[0] for x in screen_items], item in results))
-
-            self._show_scan_results(results, available_recipes)
+            self._show_scan_results(results)
 
             self._scan_label_text.set('Hide')
             self._scan_label.bind('<Button-1>', self._hide)
@@ -283,36 +278,25 @@ class UIOverlay:
         self._scan_label_text.set('Scan')
         self._scan_label.bind('<Button-1>', self._scan)
 
-    def _show_scan_results(self, results: Dict[str, List[Tuple[int, int]]], available_recipes: List[Tuple[str, List[Tuple[int, int]], bool]]) -> None:
+    def _show_scan_results(self, results: Dict[str, List[Tuple[int, int]]]) -> None:
         self._scan_results_window = UIOverlay.create_toplevel_window()
         x = int(self._image_scanner.screen_width / 3)
         self._scan_results_window.geometry(f'+{x}+0')
 
-        last_column = 0
-        if self._settings.should_display_inventory_items():
-            last_column = self._show_inventory_list(results)
-        self._show_available_recipes_list(available_recipes, last_column + 2)
+        self._show_inventory_list(results)
+
 
     def _show_inventory_list(self, results: Dict[str, List[Tuple[int, int]]]) -> int:
-        row = 0
+        row = 1
         column = 0
+
+        tk.Label(self._scan_results_window, text='Copied to clipboard!', font=FONT_BIG, fg=COLOR_FG_WHITE, bg=COLOR_BG).grid(row=0, column=0, sticky='w', padx=5, columnspan=2)
 
         for item in self._items_map.items():
             inventory_items = results.get(item)
             if inventory_items is not None:
                 row, column = self._show_image_and_label(item, inventory_items, COLOR_FG_WHITE, f'x{len(inventory_items)} {item}', row, column)
         return column
-
-
-    def _show_available_recipes_list(self, available_recipes: List[Tuple[str, List[Tuple[int, int]], bool]], column: int) -> None:
-        row = 0
-
-        for item, inventory_items, exists_in_inventory in available_recipes:
-            if exists_in_inventory:
-                fg = COLOR_FG_GREEN
-            else:
-                fg = COLOR_FG_ORANGE
-            row, column = self._show_image_and_label(item, inventory_items, fg, item, row, column)
 
     def _show_image_and_label(self, item, inventory_items: Tuple[int, int], highlight_color: str, label_text: str, row: int, column: int) -> Tuple[int, int]:
         image = tk.Label(self._scan_results_window, image=self._items_map.get_display_small_image(item), bg=COLOR_BG, pady=5)
@@ -323,7 +307,7 @@ class UIOverlay:
         row += 1
         if row % 10 == 0:
             column += 2
-            row = 0
+            row = 1
         return (row, column)
 
     def _highlight_items_in_inventory(self, inventory_items: List[Tuple[int, int]], color: str) -> None:
@@ -353,8 +337,10 @@ class Settings:
         self._image_scanner = image_scanner
 
         self._config = ConfigParser()
-        self._config_file = 'settings.ini'
+        self._config_dir = Path.home() / 'poe_arch_scanner'
+        self._config_file = self._config_dir / 'settings.ini'
 
+        self._create_config_dir()
         self._config.read(self._config_file)
         if 'settings' not in self._config:
             self._config.add_section('settings')
@@ -368,6 +354,9 @@ class Settings:
         b = s.get('display_inventory_items')
         self._display_inventory_items = True if b is not None and b == 'True' else False
 
+    def _create_config_dir(self):
+        if not self._config_dir.exists():
+            self._config_dir.mkdir(parents=True)
 
     def show(self) -> None:
         self._window = tk.Toplevel()
